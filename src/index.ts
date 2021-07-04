@@ -7,7 +7,22 @@ import {
   maybe,
   Parser,
 } from "./Parser/parser";
-import { Val, SumExp, SubExp, MulExp, DivExp } from "./MathExpressions/math";
+import {
+  Val,
+  SumExp,
+  SubExp,
+  MulExp,
+  DivExp,
+  AST,
+} from "./MathExpressions/math";
+
+class Id implements AST {
+  constructor(public name: string) {}
+
+  run(): number {
+    return 0;
+  }
+}
 
 // parsers:
 const whitespace = regexp(/[ \n\r\t]+/y);
@@ -20,6 +35,8 @@ const RIGHT_PAREN = token(/[)]/y);
 const NUMERIC_VALUE = token(/[0-9]+/y).map(
   (digits) => new Val(parseInt(digits))
 );
+const ID = token(/[a-zA-Z_][a-zA-Z0-9_]*/y);
+const id = ID.map((name) => new Id(name));
 const SUM_OP = token(/[+]/y).map(() => SumExp);
 const SUB_OP = token(/[-]/y).map(() => SubExp);
 const MUL_OP = token(/[*]/y).map(() => MulExp);
