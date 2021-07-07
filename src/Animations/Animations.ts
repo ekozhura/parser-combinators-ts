@@ -200,6 +200,47 @@ function runGraphic(
   }
 }
 
+type Time = number;
+
+interface IAnimation<T> {
+  type: "animation";
+  fn(time: Time): T; 
+}
+
+function lift0<T extends any>(constValue: T): IAnimation<T> {
+  return {
+    fn() {
+      return constValue;
+    },
+    type: "animation",
+  };
+}
+
+const lift1 = <T extends GraphicAction>(fn: (a: T) => T) => (animation: IAnimation<T>): IAnimation<T> => {
+  return {
+    fn(time) {
+      return fn(animation.fn(time));
+    },
+    type: "animation",
+  };
+};
+
+const lift2 = <T extends GraphicAction,  S extends GraphicAction>(fn: (a: T, b: S) => T) => (animationA: IAnimation<T>, animationB: IAnimation<S>): IAnimation<T> => {
+  return {
+    fn(time) {
+      return fn(animationA.fn(time), animationB.fn(time));
+    },
+    type: "animation",
+  };
+};
+
+const varied = <T>(fn: (time: Time) => T) => ({ fn, type: "animation" });
+const always = lift0;
+const emptyA = lift0<EmptyAction>(empty as any);
+const moveA = lift2<any, any>(move as any);
+const scaleA = lift1<Scale>(scale as any);
+const composeA = lift2<GraphicAction, GraphicAction>(andThen);
+
 let imageEl = document.getElementById("doomfaces") as HTMLImageElement;
 let canvasElement = document.getElementById("canvasId") as HTMLCanvasElement;
 let context = canvasElement.getContext("2d");
@@ -362,3 +403,29 @@ function executeCode(sourceCode: string) {
   runGraphic(context, parsedAST);
   context.restore();
 };
+
+/**
+ * const graphics = andThen(
+  andThen(move(20, 20), scale(2)),
+  drawSprite(imageEl, straightFace)
+);
+ */
+const imageA = composeA(composeA(
+  moveA(varied(t => 100 * Math.sin(Math.PI * 2 * t / 6000))  as any, always(20)), scaleA(always(2) as any)
+), always(drawSprite(imageEl, straightFace)));
+
+
+function runAnimation(animation: IAnimation<GraphicAction>) {
+  function loop(t: number) {
+    context.clearRect(0, 0, canvasElement.width, canvasElement.height);
+    context.save();
+
+    runGraphic(context, animation.fn(t));
+
+    context.restore();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+}
+
+runAnimation(imageA);
